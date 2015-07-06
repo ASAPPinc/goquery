@@ -60,13 +60,23 @@ func (s *Selection) SetAttr(attrName, val string) *Selection {
 // Text gets the combined text contents of each element in the set of matched
 // elements, including their descendants.
 func (s *Selection) Text() string {
+	return s.TextWithOpts(TextOpts{})
+}
+
+// TextWithOpts gets the combined text contents of each element in the set of matched
+// elements, including their descendants.
+func (s *Selection) TextWithOpts(opts TextOpts) string {
 	var buf bytes.Buffer
 
 	// Slightly optimized vs calling Each: no single selection object created
 	for _, n := range s.Nodes {
-		buf.WriteString(getNodeText(n))
+		buf.WriteString(getNodeTextWithOpts(n, opts))
 	}
 	return buf.String()
+}
+
+type TextOpts struct {
+	PreserveBrNewlines bool
 }
 
 // Size is an alias for Length.
@@ -194,15 +204,20 @@ func (s *Selection) ToggleClass(class ...string) *Selection {
 
 // Get the specified node's text content.
 func getNodeText(node *html.Node) string {
+	return getNodeTextWithOpts(node, TextOpts{})
+}
+func getNodeTextWithOpts(node *html.Node, opts TextOpts) string {
 	if node.Type == html.TextNode {
 		// Keep newlines and spaces, like jQuery
 		return node.Data
 	} else if node.FirstChild != nil {
 		var buf bytes.Buffer
 		for c := node.FirstChild; c != nil; c = c.NextSibling {
-			buf.WriteString(getNodeText(c))
+			buf.WriteString(getNodeTextWithOpts(c, opts))
 		}
 		return buf.String()
+	} else if strings.ToLower(node.Data) == "br" && opts.PreserveBrNewlines {
+		return "\n"
 	}
 
 	return ""
